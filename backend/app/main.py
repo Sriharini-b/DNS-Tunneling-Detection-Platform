@@ -3,6 +3,7 @@ DNS Tunneling Detection Platform — FastAPI Application Entry Point
 """
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,6 +14,26 @@ from app.db.init_db import init_db
 from app.api import analyze, chat, settings, lookup, dashboard
 
 logger = logging.getLogger(__name__)
+
+
+def _get_allowed_origins() -> list[str]:
+    """
+    Read comma-separated allowed origins from ALLOWED_ORIGINS env var.
+    Falls back to localhost dev servers if unset.
+    Example:  ALLOWED_ORIGINS=https://myapp.vercel.app,http://localhost:5173
+    """
+    raw = os.environ.get("ALLOWED_ORIGINS", "")
+    if raw.strip() == "*":
+        return ["*"]
+    origins = [o.strip() for o in raw.split(",") if o.strip()]
+    if not origins:
+        # Local development defaults
+        origins = [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3000",
+        ]
+    return origins
 
 
 @asynccontextmanager
@@ -44,10 +65,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow local frontend dev server
+# CORS — origins are configured via ALLOWED_ORIGINS environment variable
+allowed_origins = _get_allowed_origins()
+logger.info(f"CORS allowed origins: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

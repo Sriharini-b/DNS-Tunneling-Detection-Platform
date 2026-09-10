@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: dns-tunneling-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: ALLOWED_ORIGINS
+        sync: false   # Set this in the Render dashboard to your Vercel URL
+        # Example: https://your-app.vercel.app,http://localhost:5173
+      - key: ENCRYPTION_KEY
+        generateValue: false   # Paste output of: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+        sync: false
+      - key: DATABASE_URL
+        sync: false   # Leave blank for SQLite in /tmp, or set a PostgreSQL URL for persistence
+      - key: PYTHONUNBUFFERED
+        value: "1"
